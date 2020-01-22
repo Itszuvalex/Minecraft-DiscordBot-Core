@@ -27,9 +27,6 @@
       "commandName": "Docker",
       "launchBrowser": true,
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
-      "environmentVariables": {
-        "token": "MjA0NzkwODcxMDk3MzQ0MDAw.Xia5CQ.cLiPw-95-x9M3i0P2BWaAG-k2KI"
-      },
       "publishAllPorts": true,
       "useSSL": true
     }
