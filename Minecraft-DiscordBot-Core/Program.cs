@@ -62,6 +62,8 @@ namespace MinecraftDiscordBotCore
                 .AddSingleton<CommandHandlingService>()
                 .AddSingleton<HttpClient>()
                 .AddSingleton<BotTokenProviderService>()
+                .AddSingleton<MinecraftServerHandler>()
+                .AddSingleton<MinecraftServerConnectedHandler>()
                 .BuildServiceProvider();
         }
     }
