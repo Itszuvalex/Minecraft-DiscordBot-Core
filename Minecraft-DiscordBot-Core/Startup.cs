@@ -24,6 +24,7 @@ namespace MinecraftDiscordBotCore
 
             app.Use(async (context, next) =>
             {
+                Console.WriteLine(String.Format("Received connection attempt at \"{0}\" with scheme {1}", context.Request.Path, context.Request.Scheme));
                 if (context.Request.Path == "/ws")
                 {
                     if (context.WebSockets.IsWebSocketRequest)

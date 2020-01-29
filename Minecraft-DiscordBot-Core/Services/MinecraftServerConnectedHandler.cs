@@ -13,7 +13,6 @@ namespace MinecraftDiscordBotCore.Services {
 
         internal void HandleWebsocket(WebSocket webSocket, TaskCompletionSource<object> socketFinishedTcs)
         {
-            throw new NotImplementedException();
         }
     }
 }
