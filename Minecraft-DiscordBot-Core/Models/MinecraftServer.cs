@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MinecraftDiscordBotCore.Models.Messages;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
@@ -10,11 +11,13 @@ namespace MinecraftDiscordBotCore.Models
     {
         private WebSocket Socket { get; }
         private TaskCompletionSource<object> SocketFinishedTcs { get; }
+        private McServerStatus Status;
 
-        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs)
+        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, McServerStatus initialStatus)
         {
             Socket = socket;
             SocketFinishedTcs = socketFinishedTcs;
+            Status = initialStatus;
         }
 
         public void Close()

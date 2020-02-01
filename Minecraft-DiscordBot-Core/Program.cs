@@ -28,7 +28,7 @@ namespace MinecraftDiscordBotCore
             // when you are finished using it, at the end of your app's lifetime.
             // If you use another dependency injection framework, you should inspect
             // its documentation for the best way to do this.
-            IHost host = CreateHostBuilder(args).Build();
+            using IHost host = CreateHostBuilder(args).Build();
             var services = host.Services;
             var client = services.GetRequiredService<DiscordSocketClient>();
 
