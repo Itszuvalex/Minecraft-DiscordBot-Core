@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MinecraftDiscordBotCore.Models
@@ -20,8 +21,10 @@ namespace MinecraftDiscordBotCore.Models
             Status = initialStatus;
         }
 
-        public void Close()
+        public async Task CloseAsync()
         {
+            using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(2)); 
+            await Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing connection", cancellationTokenSource.Token);
             SocketFinishedTcs?.SetResult(null);
         }
     }

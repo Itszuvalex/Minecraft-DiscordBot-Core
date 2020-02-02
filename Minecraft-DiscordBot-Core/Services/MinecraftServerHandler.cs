@@ -22,5 +22,15 @@ namespace MinecraftDiscordBotCore.Services
                 Servers.Add(server);
             }
         }
+
+        public void Close()
+        {
+            lock (Servers)
+            {
+                var closeTasks = Servers.Select((server) => server.CloseAsync());
+                Task.WaitAll(closeTasks.ToArray());
+                Servers.Clear();
+            }
+        }
     }
 }

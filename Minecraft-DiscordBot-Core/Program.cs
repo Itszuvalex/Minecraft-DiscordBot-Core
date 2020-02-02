@@ -31,6 +31,7 @@ namespace MinecraftDiscordBotCore
             using IHost host = CreateHostBuilder(args).Build();
             var services = host.Services;
             var client = services.GetRequiredService<DiscordSocketClient>();
+            var serverHandler = services.GetRequiredService<MinecraftServerHandler>();
 
             client.Log += LogAsync;
             services.GetRequiredService<CommandService>().Log += LogAsync;
@@ -43,6 +44,7 @@ namespace MinecraftDiscordBotCore
             // Here we initialize the logic required to register our commands.
             await services.GetRequiredService<CommandHandlingService>().InitializeAsync();
             await host.RunAsync();
+            serverHandler.Close();
         }
 
         private Task LogAsync(LogMessage log)
