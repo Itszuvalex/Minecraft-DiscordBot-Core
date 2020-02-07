@@ -17,6 +17,7 @@ namespace MinecraftDiscordBotCore.Services
 
         public void AddServer(MinecraftServer server)
         {
+            _ = server.ListenAsync();
             lock (Servers)
             {
                 Servers.Add(server);
