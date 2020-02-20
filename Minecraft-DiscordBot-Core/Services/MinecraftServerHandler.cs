@@ -17,11 +17,23 @@ namespace MinecraftDiscordBotCore.Services
 
         public void AddServer(MinecraftServer server)
         {
-            _ = server.ListenAsync();
             lock (Servers)
             {
                 Servers.Add(server);
             }
+            server.Listen();
+            Console.WriteLine("Added server to list");
+        }
+
+        public void RemoveServer(MinecraftServer server)
+        {
+            Task close = server.CloseAsync();
+            lock (Servers)
+            {
+                Servers.Remove(server);
+            }
+            close.Wait();
+            Console.WriteLine("Removed server from list");
         }
 
         public void Close()

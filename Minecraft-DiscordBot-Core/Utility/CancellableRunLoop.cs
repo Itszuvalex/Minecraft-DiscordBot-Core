@@ -1,0 +1,60 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace MinecraftDiscordBotCore.Utility
+{
+    class CancellableRunLoop
+    {
+        public bool Running => RunTask != null;
+        private Task RunTask { get; set; }
+        private CancellationTokenSource CancellationSource { get; set; }
+        public delegate void LoopIteration(CancellationToken token);
+        public event LoopIteration LoopIterationEvent;
+
+        public CancellableRunLoop()
+        {
+        }
+
+        public void Start()
+        {
+            if (Running) return;
+
+            CancellationSource = new CancellationTokenSource();
+            RunTask = Task.Factory.StartNew(() =>
+            {
+                while (!CancellationSource.IsCancellationRequested)
+                {
+                    try
+                    {
+                        LoopIterationEvent?.Invoke(CancellationSource.Token);
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        if (e.CancellationToken != CancellationSource.Token) throw;
+                        Console.WriteLine("Received OperationCancelledException from within the run loop.");
+                    }
+                }
+            }, CancellationSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        }
+
+        public void Stop()
+        {
+            StopAsync().Wait();
+        }
+
+        public async Task StopAsync()
+        {
+            if (!Running) return;
+
+            CancellationSource.Cancel();
+            await RunTask;
+            CancellationSource.Dispose();
+            CancellationSource = null;
+            RunTask.Dispose();
+            RunTask = null;
+        }
+    }
+}

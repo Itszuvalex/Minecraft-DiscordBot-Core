@@ -1,4 +1,6 @@
 ﻿using MinecraftDiscordBotCore.Models.Messages;
+using MinecraftDiscordBotCore.Services;
+using MinecraftDiscordBotCore.Utility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,39 +16,133 @@ namespace MinecraftDiscordBotCore.Models
     {
         private WebSocket Socket { get; }
         private TaskCompletionSource<object> SocketFinishedTcs { get; }
-        private CancellationTokenSource CancellationSource { get; set; }
-        private Task ReceiveLoop { get; set; }
+        private CancellableRunLoop ReceiveLoop { get; }
+        private MinecraftServerHandler ServerHandler { get; }
         private McServerStatus Status;
 
-        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, McServerStatus initialStatus)
+        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, McServerStatus initialStatus, MinecraftServerHandler serverHandler)
         {
             Socket = socket;
             SocketFinishedTcs = socketFinishedTcs;
             Status = initialStatus;
+            ReceiveLoop = new CancellableRunLoop();
+            ReceiveLoop.LoopIterationEvent += ReceiveLoop_LoopIterationEvent;
+            ServerHandler = serverHandler;
         }
 
-        public async Task ListenAsync()
+        public void Listen()
         {
-            CancellationSource = new CancellationTokenSource();
-            ReceiveLoop = Task.Factory.StartNew(() =>
+            Console.WriteLine("Starting to listen.");
+            ReceiveLoop.Start();
+        }
+
+        private void ReceiveLoop_LoopIterationEvent(CancellationToken token)
+        {
+            Console.WriteLine("Starting to receive.");
+            ArraySegment<byte> buffer = new byte[4 * 1024];
+            using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(180));
+            Task<WebSocketReceiveResult> dataTask = null;
+            dataTask = Socket.ReceiveAsync(buffer, cancellationTokenSource.Token);
+            try
             {
-                while(!CancellationSource.IsCancellationRequested)
+                dataTask.Wait();
+            }
+            catch (Exception e)
+            {
+                // Timed out
+                Console.WriteLine(String.Format("Exception received when waiting on Socket ReceiveTask = {0}", e));
+                ServerHandler.RemoveServer(this);
+                return;
+            }
+
+            if (dataTask.IsCanceled || Socket.State != WebSocketState.Open)
+            {
+                // Timed out
+                Console.WriteLine("Didn't receive a message from the server, timing out.");
+                ServerHandler.RemoveServer(this);
+                return;
+            }
+
+            OnDataReceived(buffer.Slice(0, dataTask.Result.Count));
+        }
+
+        private void OnDataReceived(ArraySegment<byte> data)
+        {
+            try
+            {
+                if (!IMessage.TryParseMessage<MessageHeader>(data, out MessageHeader message))
                 {
-                    if (TryReceiveStatus(Socket, out Status))
-                        Console.WriteLine(string.Format("Received Status from client = {0}", Status.ToString()));
+                    Console.WriteLine("Failed to parse message header.");
+                    return;
                 }
-            }, TaskCreationOptions.LongRunning);
+
+                switch (message.Type)
+                {
+                    case ChatMessage.TypeString:
+                        if (IMessage.TryParseMessage<ChatMessage>(data, out ChatMessage chatMessage))
+                        {
+                            Console.WriteLine(String.Format("Received Chat Message: {0}", chatMessage.Message));
+                        }
+                        else
+                        {
+                            Console.WriteLine(String.Format("Unable to parse ChatMessage out of ChatMessage header."));
+                        }
+                        break;
+                    case McServerStatus.TypeString:
+                        if (IMessage.TryParseMessage<McServerStatus>(data, out Status))
+                        {
+                            Console.WriteLine("Parsed ServerStatus.");
+                        }
+                        else
+                        {
+                            Console.WriteLine(String.Format("Unable to parse ServerStatus out of ServerStatus header."));
+                        }
+                        break;
+                    default:
+                        Console.WriteLine(String.Format("Unhandled Hub Message of type = {0}", message.Type));
+                        break;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(String.Format("Error deserializing Json message = {0}", e.ToString()));
+            }
         }
 
         public async Task CloseAsync()
         {
-            CancellationSource.Cancel();
-            await ReceiveLoop;
-            CancellationSource.Dispose();
-            CancellationSource = null;
-            using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(2)); 
-            await Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing connection", cancellationTokenSource.Token);
+            if (ReceiveLoop.Running)
+                ReceiveLoop.Stop();
+
+            if (Socket.State == WebSocketState.Open || Socket.State == WebSocketState.Connecting)
+            {
+                using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                try
+                {
+                    await Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing connection", cancellationTokenSource.Token);
+                }
+                catch (Exception e)
+                { }
+            }
             SocketFinishedTcs?.SetResult(null);
+        }
+
+        public async Task SendMessage<T>(T message) where T : IMessage
+        {
+            if (Socket.State != WebSocketState.Open) return;
+            byte[] json;
+            try
+            {
+                json = JsonSerializer.SerializeToUtf8Bytes(message);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(String.Format("Exception when serializing Json: {0}", e.ToString()));
+                return;
+            }
+
+            var token = new CancellationToken();
+            await Socket.SendAsync(json, WebSocketMessageType.Text, true, token);
         }
 
         public static bool TryReceiveStatus(WebSocket socket, out McServerStatus data)
@@ -54,9 +150,9 @@ namespace MinecraftDiscordBotCore.Models
             ArraySegment<byte> buffer = new byte[4 * 1024];
             using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(180));
             Task<WebSocketReceiveResult> dataTask = null;
+            dataTask = socket.ReceiveAsync(buffer, cancellationTokenSource.Token);
             try
             {
-                dataTask = socket.ReceiveAsync(buffer, cancellationTokenSource.Token);
                 dataTask.Wait();
             }
             catch
@@ -72,11 +168,7 @@ namespace MinecraftDiscordBotCore.Models
 
             Console.WriteLine(String.Format("Received message from client = {0}", Encoding.UTF8.GetString(buffer.Slice(0, dataTask.Result.Count))));
 
-            data = JsonSerializer.Deserialize<McServerStatus>(buffer.Slice(0, dataTask.Result.Count), new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-            return true;
+            return IMessage.TryParseMessage<McServerStatus>(buffer.Slice(0, dataTask.Result.Count), out data);
         }
     }
 }

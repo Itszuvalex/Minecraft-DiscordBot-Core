@@ -7,16 +7,16 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
 WORKDIR /src
-COPY ["Minecraft-DiscrdBot-Core/Minecraft-DiscrdBot-Core.csproj", "Minecraft-DiscrdBot-Core/"]
-RUN dotnet restore "Minecraft-DiscrdBot-Core/Minecraft-DiscrdBot-Core.csproj"
+COPY ["Minecraft-DiscordBot-Core/Minecraft-DiscordBot-Core.csproj", "Minecraft-DiscordBot-Core/"]
+RUN dotnet restore "Minecraft-DiscordBot-Core/Minecraft-DiscordBot-Core.csproj"
 COPY . .
-WORKDIR "/src/Minecraft-DiscrdBot-Core"
-RUN dotnet build "Minecraft-DiscrdBot-Core.csproj" -c Release -o /app/build
+WORKDIR "/src/Minecraft-DiscordBot-Core"
+RUN dotnet build "Minecraft-DiscordBot-Core.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "Minecraft-DiscrdBot-Core.csproj" -c Release -o /app/publish
+RUN dotnet publish "Minecraft-DiscordBot-Core.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Minecraft-DiscrdBot-Core.dll"]
+ENTRYPOINT ["dotnet", "Minecraft-DiscordBot-Core.dll"]

@@ -35,7 +35,7 @@ namespace MinecraftDiscordBotCore.Services {
                 return;
             }
 
-            ServerHandler.AddServer(new MinecraftServer(webSocket, socketFinishedTcs, data));
+            ServerHandler.AddServer(new MinecraftServer(webSocket, socketFinishedTcs, data, ServerHandler));
         }
     }
 }
