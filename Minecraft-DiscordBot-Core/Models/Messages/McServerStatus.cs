@@ -10,16 +10,16 @@ namespace MinecraftDiscordBotCore.Models.Messages
         public const string TypeString = "status";
         public string Type => TypeString;
 
-        public string Name { get; }
-        public long Memory { get; }
-        public long MemoryMax { get; }
-        public long Storage { get; }
-        public long StorageMax { get; }
-        public string[] Players { get; }
-        public int PlayerCount { get; }
-        public int PlayerMax { get; }
-        public Dictionary<string, float> Tps { get; }
-        public string Status { get; }
-        public int ActiveTime { get; }
+        public string Name { get; set; }
+        public long Memory { get; set; }
+        public long MemoryMax { get; set; }
+        public long Storage { get; set; }
+        public long StorageMax { get; set; }
+        public string[] Players { get; set; }
+        public int PlayerCount { get; set; }
+        public int PlayerMax { get; set; }
+        public Dictionary<string, float> Tps { get; set; }
+        public string Status { get; set; }
+        public int ActiveTime { get; set; }
     }
 }

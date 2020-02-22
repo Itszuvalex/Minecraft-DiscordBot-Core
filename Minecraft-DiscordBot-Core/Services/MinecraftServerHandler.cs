@@ -8,21 +8,29 @@ namespace MinecraftDiscordBotCore.Services
 {
     public class MinecraftServerHandler
     {
-        private List<MinecraftServer> Servers;
+        private Dictionary<Guid, MinecraftServer> Servers;
 
         public MinecraftServerHandler()
         {
-            Servers = new List<MinecraftServer>();
+            Servers = new Dictionary<Guid, MinecraftServer>();
         }
 
         public void AddServer(MinecraftServer server)
         {
             lock (Servers)
             {
-                Servers.Add(server);
+                Servers.Add(server.Guid, server);
             }
             server.Listen();
             Console.WriteLine("Added server to list");
+        }
+
+        public bool TryGetServer(Guid guid, out MinecraftServer server)
+        {
+            lock (Servers)
+            {
+                return Servers.TryGetValue(guid, out server);
+            }
         }
 
         public void RemoveServer(MinecraftServer server)
@@ -30,7 +38,7 @@ namespace MinecraftDiscordBotCore.Services
             Task close = server.CloseAsync();
             lock (Servers)
             {
-                Servers.Remove(server);
+                Servers.Remove(server.Guid);
             }
             close.Wait();
             Console.WriteLine("Removed server from list");
@@ -40,7 +48,7 @@ namespace MinecraftDiscordBotCore.Services
         {
             lock (Servers)
             {
-                var closeTasks = Servers.Select((server) => server.CloseAsync());
+                var closeTasks = Servers.Select((server) => server.Value.CloseAsync());
                 Task.WaitAll(closeTasks.ToArray());
                 Servers.Clear();
             }

@@ -19,15 +19,20 @@ namespace MinecraftDiscordBotCore.Models
         private CancellableRunLoop ReceiveLoop { get; }
         private MinecraftServerHandler ServerHandler { get; }
         private McServerStatus Status;
+        public Guid Guid { get; }
 
-        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, McServerStatus initialStatus, MinecraftServerHandler serverHandler)
+        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, MinecraftServerHandler serverHandler, ServerId id)
         {
             Socket = socket;
             SocketFinishedTcs = socketFinishedTcs;
-            Status = initialStatus;
+            Status = new McServerStatus()
+            {
+                Name = id.Name
+            };
             ReceiveLoop = new CancellableRunLoop();
             ReceiveLoop.LoopIterationEvent += ReceiveLoop_LoopIterationEvent;
             ServerHandler = serverHandler;
+            Guid = Guid.Parse(id.Guid);
         }
 
         public void Listen()
@@ -112,7 +117,7 @@ namespace MinecraftDiscordBotCore.Models
         public async Task CloseAsync()
         {
             if (ReceiveLoop.Running)
-                ReceiveLoop.Stop();
+                ReceiveLoop.StopAsync();
 
             if (Socket.State == WebSocketState.Open || Socket.State == WebSocketState.Connecting)
             {
@@ -145,7 +150,7 @@ namespace MinecraftDiscordBotCore.Models
             await Socket.SendAsync(json, WebSocketMessageType.Text, true, token);
         }
 
-        public static bool TryReceiveStatus(WebSocket socket, out McServerStatus data)
+        public static bool TryReceiveId(WebSocket socket, out ServerId id)
         {
             ArraySegment<byte> buffer = new byte[4 * 1024];
             using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(180));
@@ -161,14 +166,42 @@ namespace MinecraftDiscordBotCore.Models
 
             if (dataTask.IsCanceled || socket.State != WebSocketState.Open)
             {
-                Console.WriteLine("Failed to receive status from websocket within 30 seconds.");
-                data = null;
+                Console.WriteLine("Failed to receive id from websocket within 30 seconds.");
+                id = null;
                 return false;
             }
 
             Console.WriteLine(String.Format("Received message from client = {0}", Encoding.UTF8.GetString(buffer.Slice(0, dataTask.Result.Count))));
 
-            return IMessage.TryParseMessage<McServerStatus>(buffer.Slice(0, dataTask.Result.Count), out data);
+            return IMessage.TryParseMessage<ServerId>(buffer.Slice(0, dataTask.Result.Count), out id);
+        }
+
+        public static bool TrySendId(WebSocket socket, ServerId id)
+        {
+            using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(180));
+            if (socket.State != WebSocketState.Open) return false;
+            byte[] json;
+            try
+            {
+                json = JsonSerializer.SerializeToUtf8Bytes(id);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(String.Format("Exception when serializing Json: {0}", e.ToString()));
+                return false;
+            }
+
+            try
+            {
+                socket.SendAsync(json, WebSocketMessageType.Text, true, cancellationTokenSource.Token).Wait();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(String.Format("Exception when sending id: {0}", e.ToString()));
+                return false;
+            }
+
+            return true;
         }
     }
 }

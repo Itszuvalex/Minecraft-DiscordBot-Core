@@ -19,14 +19,15 @@ namespace MinecraftDiscordBotCore.Services {
 
         internal void HandleWebsocket(WebSocket webSocket, TaskCompletionSource<object> socketFinishedTcs)
         {
-            McServerStatus data; 
+            ServerId id; 
             try
             {
-                if(!MinecraftServer.TryReceiveStatus(webSocket, out data))
+                if(!MinecraftServer.TryReceiveId(webSocket, out id))
                 {
                     socketFinishedTcs.SetResult(false);
                     return;
                 }
+                Console.WriteLine(String.Format("Received connection from server id={0}", id.Guid));
             }
             catch (Exception e)
             {
@@ -35,7 +36,18 @@ namespace MinecraftDiscordBotCore.Services {
                 return;
             }
 
-            ServerHandler.AddServer(new MinecraftServer(webSocket, socketFinishedTcs, data, ServerHandler));
+            if(string.IsNullOrEmpty(id.Guid) || Guid.Parse(id.Guid) == Guid.Empty)
+            {
+                id.Guid = Guid.NewGuid().ToString();
+                Console.WriteLine(String.Format("Id was unset, sending id to server: {0}", id.Guid));
+                if (!MinecraftServer.TrySendId(webSocket, id))
+                {
+                    socketFinishedTcs.SetResult(false);
+                    return;
+                }
+            }
+
+            ServerHandler.AddServer(new MinecraftServer(webSocket, socketFinishedTcs, ServerHandler, id));
         }
     }
 }
