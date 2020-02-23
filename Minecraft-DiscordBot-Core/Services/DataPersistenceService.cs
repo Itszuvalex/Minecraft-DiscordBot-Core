@@ -28,7 +28,7 @@ namespace MinecraftDiscordBotCore.Services
             {
                 Load<BotControlData, Dictionary<string, HashSet<ulong>>>(BotControlData.DataKey, BotControlData);
                 Load<KnownServerData, Dictionary<string, string>>(KnownServerData.DataKey, KnownServerData);
-                Load<ServerChatConnectionData, Dictionary<string, List<Tuple<ulong, ulong>>>>(ServerChatConnectionData.DataKey, ServerChatConnectionData);
+                Load<ServerChatConnectionData, Dictionary<string, List<GuildChannel>>>(ServerChatConnectionData.DataKey, ServerChatConnectionData);
             }
             BotControlData.DataPersistence = this;
             KnownServerData.DataPersistence = this;
@@ -39,7 +39,7 @@ namespace MinecraftDiscordBotCore.Services
         public void Persist<T, Y>(string name, T o) where T : IPersistable<Y>
         {
             var persistable = o.GetPersistable();
-            var json = JsonSerializer.Serialize<Y>(persistable, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(persistable, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(FileForObj(name), json);
         }
 

@@ -6,40 +6,65 @@ using System.Threading.Tasks;
 
 namespace MinecraftDiscordBotCore.Models
 {
-    public class ServerChatConnectionData : IPersistable<Dictionary<string, List<Tuple<ulong, ulong>>>>
+    public class ServerChatConnectionData : IPersistable<Dictionary<string, List<GuildChannel>>>
     {
         private readonly object _lock = new object();
-        private Dictionary<Guid, HashSet<Tuple<ulong, ulong>>> ServerToGuildChannelMap { get; }
-        private Dictionary<Tuple<ulong, ulong>, HashSet<Guid>> GuildChannelToServerMap { get; }
+        private Dictionary<Guid, HashSet<GuildChannel>> ServerToGuildChannelMap { get; }
+        private Dictionary<GuildChannel, HashSet<Guid>> GuildChannelToServerMap { get; }
         public DataPersistenceService DataPersistence { get; set; }
         public readonly string DataKey = "ServerChatConnectionData";
         public ServerChatConnectionData()
         {
-            ServerToGuildChannelMap = new Dictionary<Guid, HashSet<Tuple<ulong, ulong>>>();
-            GuildChannelToServerMap = new Dictionary<Tuple<ulong, ulong>, HashSet<Guid>>();
+            ServerToGuildChannelMap = new Dictionary<Guid, HashSet<GuildChannel>>();
+            GuildChannelToServerMap = new Dictionary<GuildChannel, HashSet<Guid>>();
+        }
+
+        public IEnumerable<GuildChannel> GuildChannelsForServer(Guid guid)
+        {
+            lock(_lock)
+            {
+                if(!ServerToGuildChannelMap.TryGetValue(guid, out HashSet<GuildChannel> guildchannels))
+                {
+                    return Enumerable.Empty<GuildChannel>();
+                }
+                return guildchannels.ToArray();
+            }
+        }
+
+        public IEnumerable<Guid> ServersForGuildChannel(ulong guild, ulong channel)
+        {
+            var tuple = new GuildChannel(guild, channel);
+            lock(_lock)
+            {
+                if(!GuildChannelToServerMap.TryGetValue(tuple, out HashSet<Guid> servers))
+                {
+                    return Enumerable.Empty<Guid>();
+                }
+                return servers.ToArray();
+            }
         }
 
         public bool AddGuildChannelForServer(ulong guild, ulong channel, Guid server)
         {
             lock(_lock)
             {
-                var tuple = Tuple.Create(guild, channel);
+                var tuple = new GuildChannel(guild, channel);
                 if (!TryAddServerGuildChannelToServerMap(tuple, server))
                     return false;
 
                 if (!TryAddServerGuildChannelToGuildChannelMap(tuple, server))
                     return false;
             }
-            DataPersistence.Persist<ServerChatConnectionData, Dictionary<string, List<Tuple<ulong, ulong>>>>(DataKey, this);
+            DataPersistence.Persist<ServerChatConnectionData, Dictionary<string, List<GuildChannel>>>(DataKey, this);
             return true;
         }
 
-        private bool TryAddServerGuildChannelToServerMap(Tuple<ulong, ulong> tuple, Guid server)
+        private bool TryAddServerGuildChannelToServerMap(GuildChannel tuple, Guid server)
         {
-            HashSet<Tuple<ulong, ulong>> guildchannel;
+            HashSet<GuildChannel> guildchannel;
             if(!ServerToGuildChannelMap.TryGetValue(server, out guildchannel))
             {
-                guildchannel = new HashSet<Tuple<ulong, ulong>>();
+                guildchannel = new HashSet<GuildChannel>();
                 ServerToGuildChannelMap.Add(server, guildchannel);
             }
             
@@ -52,7 +77,7 @@ namespace MinecraftDiscordBotCore.Models
             return true;
         }
 
-        private bool TryAddServerGuildChannelToGuildChannelMap(Tuple<ulong, ulong> tuple, Guid server)
+        private bool TryAddServerGuildChannelToGuildChannelMap(GuildChannel tuple, Guid server)
         {
             HashSet<Guid> servers;
             if(!GuildChannelToServerMap.TryGetValue(tuple, out servers))
@@ -72,14 +97,40 @@ namespace MinecraftDiscordBotCore.Models
 
         public bool RemoveGuildChannelForServer(ulong guild, ulong channel, Guid server)
         {
+            var tuple = new GuildChannel(guild, channel);
             lock(_lock)
             {
+                if (!ServerToGuildChannelMap.TryGetValue(server, out HashSet<GuildChannel> guildchannel))
+                {
+                    return false;
+                }
+                lock (guildchannel)
+                {
+                    guildchannel.Remove(tuple);
+                    if(guildchannel.Count == 0)
+                    {
+                        ServerToGuildChannelMap.Remove(server);
+                    }
+                }
 
+                if(!GuildChannelToServerMap.TryGetValue(tuple, out HashSet<Guid> servers))
+                {
+                    return false;
+                }
+                lock(servers)
+                {
+                    servers.Remove(server);
+                    if(servers.Count == 0)
+                    {
+                        GuildChannelToServerMap.Remove(tuple);
+                    }
+                }
             }
+            DataPersistence.Persist<ServerChatConnectionData, Dictionary<string, List<GuildChannel>>>(DataKey, this);
             return true;
         }
 
-        public void FromPersistable(Dictionary<string, List<Tuple<ulong, ulong>>> t)
+        public void FromPersistable(Dictionary<string, List<GuildChannel>> t)
         {
             lock(_lock)
             {
@@ -99,15 +150,15 @@ namespace MinecraftDiscordBotCore.Models
             }
         }
 
-        public Dictionary<string, List<Tuple<ulong, ulong>>> GetPersistable()
+        public Dictionary<string, List<GuildChannel>> GetPersistable()
         {
-            Dictionary<string, List<Tuple<ulong, ulong>>> ret = new Dictionary<string, List<Tuple<ulong, ulong>>>();
+            Dictionary<string, List<GuildChannel>> ret = new Dictionary<string, List<GuildChannel>>();
             lock(_lock)
             {
                 foreach(var pair in ServerToGuildChannelMap)
                 {
                     var g = pair.Key.ToString();
-                    var list = new List<Tuple<ulong, ulong>>();
+                    var list = new List<GuildChannel>();
                     foreach(var t in pair.Value)
                     {
                         list.Add(t);

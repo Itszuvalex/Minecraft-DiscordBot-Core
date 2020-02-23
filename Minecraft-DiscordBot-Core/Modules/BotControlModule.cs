@@ -13,6 +13,7 @@ namespace MinecraftDiscordBotCore.Modules
 
         [Command("AddCommandChannel")]
         [Alias("acc")]
+        [RequireContext(ContextType.Guild)]
         public Task AddCommandChannel()
         {
             bool success = DataPersistence.BotControlData.AddControlChannel(Context.Guild.Id, Context.Channel.Id);
@@ -21,6 +22,7 @@ namespace MinecraftDiscordBotCore.Modules
 
         [Command("RemoveCommandChannel")]
         [Alias("rcc")]
+        [RequireContext(ContextType.Guild)]
         public Task RemoveCommandChannel()
         {
             if (DataPersistence.BotControlData.IsControlChannel(Context.Guild.Id, Context.Channel.Id))

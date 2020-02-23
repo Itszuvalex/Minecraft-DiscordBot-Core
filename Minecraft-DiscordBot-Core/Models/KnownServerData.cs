@@ -59,6 +59,28 @@ namespace MinecraftDiscordBotCore.Models
             }
         }
 
+        public bool IsServerKnown(Guid guid, out string name)
+        {
+            lock(KnownServers)
+            {
+                return KnownServers.TryGetValue(guid, out name);
+            }
+        }
+
+        public IEnumerable<Tuple<Guid, string>> KnownServersByName(string name)
+        {
+            var servers = new List<Tuple<Guid, string>>();
+            lock (KnownServers)
+            {
+                foreach(var pair in KnownServers)
+                {
+                    if (pair.Value.Equals(name))
+                        servers.Add(Tuple.Create(pair.Key, pair.Value));
+                }
+                return servers;
+            }
+        }
+
         public void FromPersistable(Dictionary<string, string> t)
         {
             lock (KnownServers)

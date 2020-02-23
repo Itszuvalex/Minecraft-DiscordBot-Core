@@ -13,12 +13,14 @@ namespace MinecraftDiscordBotCore.Services
         private readonly CommandService _commands;
         private readonly DiscordSocketClient _discord;
         private readonly IServiceProvider _services;
+        private readonly DiscordChatIntegrationService _chat;
 
         public CommandHandlingService(IServiceProvider services)
         {
             _commands = services.GetRequiredService<CommandService>();
             _discord = services.GetRequiredService<DiscordSocketClient>();
             _services = services;
+            _chat = services.GetRequiredService<DiscordChatIntegrationService>();
 
             // Hook CommandExecuted to handle post-command-execution logic.
             _commands.CommandExecuted += CommandExecutedAsync;
@@ -38,6 +40,8 @@ namespace MinecraftDiscordBotCore.Services
             // Ignore system messages, or messages from other bots
             if (!(rawMessage is SocketUserMessage message)) return;
             if (message.Source != MessageSource.User) return;
+
+            Task chat = _chat.MessageReceivedAsync(rawMessage);
 
             // This value holds the offset where the prefix ends
             var argPos = 0;
