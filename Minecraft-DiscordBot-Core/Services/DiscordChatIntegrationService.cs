@@ -32,18 +32,23 @@ namespace MinecraftDiscordBotCore.Services
             var guild = context.Guild.Id;
             var channel = message.Channel.Id;
             var servers = DataService.ServerChatConnectionData.ServersForGuildChannel(guild, channel);
-            Console.WriteLine("Received message in DIscordChatIntegrationService");
-            Task sendTask = Task.Factory.StartNew(() =>
+            foreach (var server in servers)
             {
-                foreach (var server in servers)
+                if (ServerHandler.TryGetServer(server, out MinecraftServer mcserver))
                 {
-                    if (ServerHandler.TryGetServer(server, out MinecraftServer mcserver))
-                    {
-                        mcserver.SendMessage(new ChatMessage() { Message = string.Format("{0}: {1}", message.Author.Username, message.Content.Replace("\n", " ")), Timestamp = message.Timestamp.DateTime.ToString("HH:mm") }).Wait();
-                    }
+                    await mcserver.SendMessage(new ChatMessage() { Message = string.Format("{0}/{1}/{2}: {3}", context.Guild.Name.Substring(0, 5), context.Channel.Name.Substring(0, 5), message.Author.Username, message.Content.Replace("\n", " ")), Timestamp = message.Timestamp.DateTime.ToString("HH:mm") });
                 }
-            });
-            await sendTask;
+            }
+        }
+
+        public async Task MinecraftServerMessageReceivedAsync(MinecraftServer server, ChatMessage message)
+        {
+            var guildchannels = DataService.ServerChatConnectionData.GuildChannelsForServer(server.Guid);
+            foreach(var guildchannel in guildchannels)
+            {
+                var channel = Discord.GetGuild(guildchannel.Guild).GetTextChannel(guildchannel.Channel);
+                await channel.SendMessageAsync(string.Format("[{0}/{1}: {2}", server.Name, message.Timestamp, message.Message));
+            }
         }
     }
 }

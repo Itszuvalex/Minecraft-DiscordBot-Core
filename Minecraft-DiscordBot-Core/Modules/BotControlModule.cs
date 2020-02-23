@@ -1,4 +1,5 @@
-﻿using Discord.Commands;
+﻿using Discord;
+using Discord.Commands;
 using MinecraftDiscordBotCore.Services;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace MinecraftDiscordBotCore.Modules
 
         [Command("AddCommandChannel")]
         [Alias("acc")]
+        [RequireUserPermission(ChannelPermission.ManageChannels, ErrorMessage ="This requires channel management permissions.")]
         [RequireContext(ContextType.Guild)]
         public Task AddCommandChannel()
         {
@@ -22,6 +24,7 @@ namespace MinecraftDiscordBotCore.Modules
 
         [Command("RemoveCommandChannel")]
         [Alias("rcc")]
+        [RequireUserPermission(ChannelPermission.ManageChannels, ErrorMessage ="This requires channel management permissions.")]
         [RequireContext(ContextType.Guild)]
         public Task RemoveCommandChannel()
         {

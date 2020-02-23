@@ -19,10 +19,11 @@ namespace MinecraftDiscordBotCore.Models
         private CancellableRunLoop ReceiveLoop { get; }
         private MinecraftServerHandler ServerHandler { get; }
         private McServerStatus Status;
+        private DiscordChatIntegrationService Chat { get; }
         public Guid Guid { get; }
         public string Name => Status.Name;
 
-        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, MinecraftServerHandler serverHandler, ServerId id)
+        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, MinecraftServerHandler serverHandler, ServerId id, DiscordChatIntegrationService chat)
         {
             Socket = socket;
             SocketFinishedTcs = socketFinishedTcs;
@@ -34,17 +35,16 @@ namespace MinecraftDiscordBotCore.Models
             ReceiveLoop.LoopIterationEvent += ReceiveLoop_LoopIterationEvent;
             ServerHandler = serverHandler;
             Guid = Guid.Parse(id.Guid);
+            Chat = chat;
         }
 
         public void Listen()
         {
-            Console.WriteLine("Starting to listen.");
             ReceiveLoop.Start();
         }
 
         private void ReceiveLoop_LoopIterationEvent(CancellationToken token)
         {
-            Console.WriteLine("Starting to receive.");
             ArraySegment<byte> buffer = new byte[4 * 1024];
             using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(180));
             Task<WebSocketReceiveResult> dataTask = null;
@@ -87,7 +87,7 @@ namespace MinecraftDiscordBotCore.Models
                     case ChatMessage.TypeString:
                         if (IMessage.TryParseMessage<ChatMessage>(data, out ChatMessage chatMessage))
                         {
-                            Console.WriteLine(String.Format("Received Chat Message: {0}", chatMessage.Message));
+                            Chat.MinecraftServerMessageReceivedAsync(this, chatMessage).Wait();
                         }
                         else
                         {
@@ -97,7 +97,6 @@ namespace MinecraftDiscordBotCore.Models
                     case McServerStatus.TypeString:
                         if (IMessage.TryParseMessage<McServerStatus>(data, out Status))
                         {
-                            Console.WriteLine("Parsed ServerStatus.");
                         }
                         else
                         {

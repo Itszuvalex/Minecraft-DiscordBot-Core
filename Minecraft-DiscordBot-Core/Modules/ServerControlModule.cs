@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Commands;
 using MinecraftDiscordBotCore.Models;
+using MinecraftDiscordBotCore.Models.Messages;
 using MinecraftDiscordBotCore.Services;
 using System;
 using System.Collections.Generic;
@@ -50,6 +51,8 @@ namespace MinecraftDiscordBotCore.Modules
 
         [Command("AddChatChannel")]
         [Alias("acc")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(ChannelPermission.ManageChannels, ErrorMessage ="This requires channel management permissions.")]
         public Task AddChatChannel([Remainder] string text)
         {
             if (!DataPersistence.BotControlData.IsControlChannel(Context.Guild.Id, Context.Channel.Id))
@@ -71,6 +74,8 @@ namespace MinecraftDiscordBotCore.Modules
 
         [Command("RemoveChatChannel")]
         [Alias("rcc")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(ChannelPermission.ManageChannels, ErrorMessage ="This requires channel management permissions.")]
         public Task RemoveChatChannel([Remainder] string text)
         {
             if (!DataPersistence.BotControlData.IsControlChannel(Context.Guild.Id, Context.Channel.Id))
@@ -88,6 +93,79 @@ namespace MinecraftDiscordBotCore.Modules
             if (!DataPersistence.ServerChatConnectionData.RemoveGuildChannelForServer(Context.Guild.Id, Context.Channel.Id, server))
                 return ReplyAsync("Chat channel already removed or unsuccessful");
             return ReplyAsync("Successfully removed chat channel");
+        }
+
+        [Command("SendServerCommand")]
+        [Alias("cmd", "command")]
+        [RequireUserPermission(ChannelPermission.ManageRoles, ErrorMessage ="This command is dangerous and requires ManageRoles permission since it's also dangerous")]
+        public Task SendServerCommand([Remainder] string text)
+        {
+            if (!DataPersistence.BotControlData.IsControlChannel(Context.Guild.Id, Context.Channel.Id))
+                return Task.CompletedTask;
+
+            if(!TryGetServerByString(text, out Guid server, out string serverName, out string error, out Embed embederror))
+            {
+                if(embederror != null)
+                {
+                    return ReplyAsync(embed: embederror);
+                }
+                return ReplyAsync(error);
+            }
+
+            string restOfMessage = text.Trim();
+            if(!string.IsNullOrEmpty(serverName))
+            {
+                if(restOfMessage.StartsWith("\""))
+                {
+                    var index = restOfMessage.Substring(1).IndexOf("\"");
+                    restOfMessage = restOfMessage.Substring(index + 2);
+                }
+                else
+                {
+                    restOfMessage = restOfMessage.Substring(serverName.Length).Trim();
+                }
+            }
+            else
+            {
+                restOfMessage = restOfMessage.Substring(server.ToString().Length);
+            }
+            
+            if(!ServerHandler.TryGetServer(server, out MinecraftServer mcserver))
+            {
+                return ReplyAsync(string.Format("Failed to find connected server of guid={0}, name={1}", server, serverName));
+            }
+
+            return mcserver.SendMessage<ServerCommand>(new ServerCommand() { Command = restOfMessage.Replace("\n", " ") });
+        }
+
+        [Command("RemoveKnownServer")]
+        [Alias("rks", "remove", "forget")]
+        [RequireUserPermission(ChannelPermission.ManageRoles, ErrorMessage ="This command is dangerous and requires ManageRoles permission since it's also dangerous")]
+        public Task RemoveKnownServer([Remainder] string text)
+        {
+            if (!DataPersistence.BotControlData.IsControlChannel(Context.Guild.Id, Context.Channel.Id))
+                return Task.CompletedTask;
+
+            if(!TryGetServerByString(text, out Guid server, out string serverName, out string error, out Embed embederror))
+            {
+                if(embederror != null)
+                {
+                    return ReplyAsync(embed: embederror);
+                }
+                return ReplyAsync(error);
+            }
+
+            if(ServerHandler.TryGetServer(server, out MinecraftServer mcserver))
+            {
+                return ReplyAsync("Can't forget a known server that's still connected.");
+            }
+
+            DataPersistence.KnownServerData.RemoveKnownServer(server);
+            foreach(var guildchannel in DataPersistence.ServerChatConnectionData.GuildChannelsForServer(server))
+            {
+                DataPersistence.ServerChatConnectionData.RemoveGuildChannelForServer(guildchannel.Guild, guildchannel.Channel, server);
+            }
+            return ReplyAsync(string.Format("Forgot server name={0}, guid={1}", serverName, server));
         }
 
 
@@ -109,10 +187,12 @@ namespace MinecraftDiscordBotCore.Modules
             }
             else
             {
-                var servers = DataPersistence.KnownServerData.KnownServersByName(servernameguid);
+                var trimmedstring = GetQuotedString(servernameguid);
+
+                var servers = DataPersistence.KnownServerData.KnownServersByName(trimmedstring);
                 if(servers.Count() == 0)
                 {
-                    error = String.Format("Could not find any server by name={0}", servernameguid);
+                    error = String.Format("Could not find any server by name={0}", trimmedstring);
                     return false;
                 }
                 else if (servers.Count() > 1)
@@ -132,6 +212,20 @@ namespace MinecraftDiscordBotCore.Modules
                 name = servers.First().Item2;
             }
             return true;
+        }
+
+        private string GetQuotedString(string name)
+        {
+            var trimmedstring = name.Trim();
+            if(name.StartsWith("\""))
+            {
+                var index = name.Substring(1).IndexOf("\"");
+                if (index > 0)
+                {
+                    trimmedstring = name.Substring(1, index);
+                }
+            }
+            return trimmedstring;
         }
     }
 }
