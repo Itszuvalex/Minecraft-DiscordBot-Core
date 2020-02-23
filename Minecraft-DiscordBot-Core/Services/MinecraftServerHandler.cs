@@ -15,6 +15,8 @@ namespace MinecraftDiscordBotCore.Services
             Servers = new Dictionary<Guid, MinecraftServer>();
         }
 
+        public IEnumerable<MinecraftServer> AllServers() { lock (Servers) { return Servers.Values.ToArray(); } }
+
         public void AddServer(MinecraftServer server)
         {
             lock (Servers)
@@ -30,6 +32,14 @@ namespace MinecraftDiscordBotCore.Services
             lock (Servers)
             {
                 return Servers.TryGetValue(guid, out server);
+            }
+        }
+
+        public IEnumerable<MinecraftServer> ServersByName(string name)
+        {
+            lock(Servers)
+            {
+                return Servers.Values.Where((a) => a.Name.Equals(name)).ToArray();
             }
         }
 

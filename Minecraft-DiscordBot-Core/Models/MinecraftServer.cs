@@ -20,6 +20,7 @@ namespace MinecraftDiscordBotCore.Models
         private MinecraftServerHandler ServerHandler { get; }
         private McServerStatus Status;
         public Guid Guid { get; }
+        public string Name => Status.Name;
 
         public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, MinecraftServerHandler serverHandler, ServerId id)
         {
