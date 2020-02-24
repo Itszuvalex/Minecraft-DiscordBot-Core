@@ -14,6 +14,7 @@ namespace MinecraftDiscordBotCore.Modules
     {
         public DataPersistenceService DataPersistence { get; set; }
         public MinecraftServerHandler ServerHandler { get; set; }
+        public DiscordServerStatusMessageService StatusHandler { get; set; }
 
         [Command("las")]
         [Alias("listactiveservers", "lc", "activeservers", "connectedservers", "cs", "lcs", "listconnectedservers")]
@@ -93,6 +94,52 @@ namespace MinecraftDiscordBotCore.Modules
             if (!DataPersistence.ServerChatConnectionData.RemoveGuildChannelForServer(Context.Guild.Id, Context.Channel.Id, server))
                 return ReplyAsync("Chat channel already removed or unsuccessful");
             return ReplyAsync("Successfully removed chat channel");
+        }
+
+        [Command("AddStatusChannel")]
+        [Alias("asc")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(ChannelPermission.ManageChannels, ErrorMessage ="This requires channel management permissions.")]
+        public Task AddStatusChannel([Remainder] string text)
+        {
+            if (!DataPersistence.BotControlData.IsControlChannel(Context.Guild.Id, Context.Channel.Id))
+                return Task.CompletedTask;
+
+            if(!TryGetServerByString(text, out Guid server, out string serverName, out string error, out Embed embederror))
+            {
+                if(embederror != null)
+                {
+                    return ReplyAsync(embed: embederror);
+                }
+                return ReplyAsync(error);
+            }
+
+            if (!StatusHandler.AddStatusChannelForServer(new GuildChannel(Context.Guild.Id, Context.Channel.Id), server, serverName))
+                return ReplyAsync("Server already has status message in this channel.");
+            return Task.CompletedTask;
+        }
+
+        [Command("RemoveStatusChannel")]
+        [Alias("rsc")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(ChannelPermission.ManageChannels, ErrorMessage ="This requires channel management permissions.")]
+        public Task RemoveStatusChannel([Remainder] string text)
+        {
+            if (!DataPersistence.BotControlData.IsControlChannel(Context.Guild.Id, Context.Channel.Id))
+                return Task.CompletedTask;
+
+            if(!TryGetServerByString(text, out Guid server, out string serverName, out string error, out Embed embederror))
+            {
+                if(embederror != null)
+                {
+                    return ReplyAsync(embed: embederror);
+                }
+                return ReplyAsync(error);
+            }
+
+            if (!StatusHandler.RemoveStatusChannelForServer(new GuildChannel(Context.Guild.Id, Context.Channel.Id), server))
+                return ReplyAsync("Server does not have status message in this channel.");
+            return Task.CompletedTask;
         }
 
         [Command("SendServerCommand")]

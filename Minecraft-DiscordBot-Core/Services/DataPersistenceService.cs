@@ -1,4 +1,5 @@
 ﻿using MinecraftDiscordBotCore.Models;
+using MinecraftDiscordBotCore.Models.Persistence;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,6 +14,7 @@ namespace MinecraftDiscordBotCore.Services
         public BotControlData BotControlData { get; set; }
         public KnownServerData KnownServerData { get; set; }
         public ServerChatConnectionData ServerChatConnectionData { get; set; }
+        public ServerStatusMessageData ServerStatusMessageData { get; set; } 
         public const string FolderName = "Data";
 
         public DataPersistenceService()
@@ -20,6 +22,7 @@ namespace MinecraftDiscordBotCore.Services
             BotControlData = new BotControlData();
             KnownServerData = new KnownServerData();
             ServerChatConnectionData = new ServerChatConnectionData();
+            ServerStatusMessageData = new ServerStatusMessageData();
             if(!Directory.Exists(FolderName))
             {
                 Directory.CreateDirectory(FolderName);
@@ -29,10 +32,12 @@ namespace MinecraftDiscordBotCore.Services
                 Load<BotControlData, Dictionary<string, HashSet<ulong>>>(BotControlData.DataKey, BotControlData);
                 Load<KnownServerData, Dictionary<string, string>>(KnownServerData.DataKey, KnownServerData);
                 Load<ServerChatConnectionData, Dictionary<string, List<GuildChannel>>>(ServerChatConnectionData.DataKey, ServerChatConnectionData);
+                Load<ServerStatusMessageData, Dictionary<string, List<GuildChannelMessage>>>(ServerStatusMessageData.DataKey, ServerStatusMessageData);
             }
             BotControlData.DataPersistence = this;
             KnownServerData.DataPersistence = this;
             ServerChatConnectionData.DataPersistence = this;
+            ServerStatusMessageData.DataPersistence = this;
         }
 
 

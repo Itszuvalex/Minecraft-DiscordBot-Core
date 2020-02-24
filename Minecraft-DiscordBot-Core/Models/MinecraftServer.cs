@@ -18,12 +18,13 @@ namespace MinecraftDiscordBotCore.Models
         private TaskCompletionSource<object> SocketFinishedTcs { get; }
         private CancellableRunLoop ReceiveLoop { get; }
         private MinecraftServerHandler ServerHandler { get; }
-        private McServerStatus Status;
         private DiscordChatIntegrationService Chat { get; }
+        private DiscordServerStatusMessageService StatusHandler { get; }
+        public McServerStatus Status;
         public Guid Guid { get; }
         public string Name => Status.Name;
 
-        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, MinecraftServerHandler serverHandler, ServerId id, DiscordChatIntegrationService chat)
+        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, MinecraftServerHandler serverHandler, ServerId id, DiscordChatIntegrationService chat, DiscordServerStatusMessageService statusHandler)
         {
             Socket = socket;
             SocketFinishedTcs = socketFinishedTcs;
@@ -36,6 +37,7 @@ namespace MinecraftDiscordBotCore.Models
             ServerHandler = serverHandler;
             Guid = Guid.Parse(id.Guid);
             Chat = chat;
+            StatusHandler = statusHandler;
         }
 
         public void Listen()
@@ -97,6 +99,7 @@ namespace MinecraftDiscordBotCore.Models
                     case McServerStatus.TypeString:
                         if (IMessage.TryParseMessage<McServerStatus>(data, out Status))
                         {
+                            StatusHandler.UpdateStatusMessageForServer(Guid, Status.Name, this);
                         }
                         else
                         {

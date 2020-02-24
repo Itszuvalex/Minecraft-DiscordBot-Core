@@ -22,6 +22,11 @@ namespace MinecraftDiscordBotCore.Models
         public ulong Channel { get; set; }
         public ulong Message { get; set; }
 
+        public bool IsInChannel(GuildChannel channel)
+        {
+            return new GuildChannel(Guild, Channel) == channel;
+        }
+
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(this, obj))
