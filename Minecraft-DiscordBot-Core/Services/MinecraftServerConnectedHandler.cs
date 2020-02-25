@@ -14,13 +14,11 @@ namespace MinecraftDiscordBotCore.Services {
         private MinecraftServerHandler ServerHandler { get; }
         private DataPersistenceService DataPersistence { get; }
         private DiscordChatIntegrationService Chat { get; }
-        private DiscordServerStatusMessageService StatusHandler { get; }
-        public MinecraftServerConnectedHandler(MinecraftServerHandler handler, DataPersistenceService data, DiscordChatIntegrationService chat, DiscordServerStatusMessageService status)
+        public MinecraftServerConnectedHandler(MinecraftServerHandler handler, DataPersistenceService data, DiscordChatIntegrationService chat)
         {
             ServerHandler = handler;
             DataPersistence = data;
             Chat = chat;
-            StatusHandler = status;
         }
 
         internal void HandleWebsocket(WebSocket webSocket, TaskCompletionSource<object> socketFinishedTcs)
@@ -52,9 +50,8 @@ namespace MinecraftDiscordBotCore.Services {
                     return;
                 }
             }
-            var server = new MinecraftServer(webSocket, socketFinishedTcs, ServerHandler, id, Chat, StatusHandler);
+            var server = new MinecraftServer(webSocket, socketFinishedTcs, ServerHandler, id, Chat);
             ServerHandler.AddServer(server);
-            StatusHandler.UpdateStatusMessageForServer(Guid.Parse(id.Guid), id.Name, server);
             DataPersistence.KnownServerData.AddKnownServer(Guid.Parse(id.Guid), id.Name);
         }
     }

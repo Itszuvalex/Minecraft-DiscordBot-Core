@@ -19,12 +19,12 @@ namespace MinecraftDiscordBotCore.Models
         private CancellableRunLoop ReceiveLoop { get; }
         private MinecraftServerHandler ServerHandler { get; }
         private DiscordChatIntegrationService Chat { get; }
-        private DiscordServerStatusMessageService StatusHandler { get; }
+        public DiscordServerStatusMessageService StatusHandler { get; set; }
         public McServerStatus Status;
         public Guid Guid { get; }
         public string Name => Status.Name;
 
-        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, MinecraftServerHandler serverHandler, ServerId id, DiscordChatIntegrationService chat, DiscordServerStatusMessageService statusHandler)
+        public MinecraftServer(WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, MinecraftServerHandler serverHandler, ServerId id, DiscordChatIntegrationService chat)
         {
             Socket = socket;
             SocketFinishedTcs = socketFinishedTcs;
@@ -37,7 +37,6 @@ namespace MinecraftDiscordBotCore.Models
             ServerHandler = serverHandler;
             Guid = Guid.Parse(id.Guid);
             Chat = chat;
-            StatusHandler = statusHandler;
         }
 
         public void Listen()

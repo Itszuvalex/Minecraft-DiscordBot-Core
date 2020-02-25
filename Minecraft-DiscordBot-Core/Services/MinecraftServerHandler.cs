@@ -9,10 +9,12 @@ namespace MinecraftDiscordBotCore.Services
     public class MinecraftServerHandler
     {
         private Dictionary<Guid, MinecraftServer> Servers;
+        private DiscordServerStatusMessageService StatusHandler { get; }
 
-        public MinecraftServerHandler()
+        public MinecraftServerHandler(DiscordServerStatusMessageService status)
         {
             Servers = new Dictionary<Guid, MinecraftServer>();
+            StatusHandler = status;
         }
 
         public IEnumerable<MinecraftServer> AllServers() { lock (Servers) { return Servers.Values.ToArray(); } }
@@ -24,6 +26,8 @@ namespace MinecraftDiscordBotCore.Services
                 Servers.Add(server.Guid, server);
             }
             server.Listen();
+            server.StatusHandler = StatusHandler;
+            StatusHandler.UpdateStatusMessageForServer(server.Guid, server.Name, server);
             Console.WriteLine("Added server to list");
         }
 
@@ -51,6 +55,7 @@ namespace MinecraftDiscordBotCore.Services
                 Servers.Remove(server.Guid);
             }
             close.Wait();
+            StatusHandler.UpdateStatusMessageForServer(server.Guid, server.Name, server);
             Console.WriteLine("Removed server from list");
         }
 
